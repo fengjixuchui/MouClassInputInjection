@@ -16,9 +16,9 @@ for more information.
 #include "log.h"
 #include "mouclass.h"
 #include "mouhid_hook_manager.h"
+#include "mouse_input_validation.h"
 #include "nt.h"
 
-#include "../Common/mouse_input_validation.h"
 #include "../Common/time.h"
 
 
@@ -45,8 +45,8 @@ Remarks:
     receives mouse input data packets that contain button data.
 
 --*/
-typedef struct _MOUSE_CLASS_BUTTON_DEVICE
-{
+typedef struct _MOUSE_CLASS_BUTTON_DEVICE {
+
     //
     // The connect data information used by the MouHid driver to copy mouse
     //  input data packets to the mouse class button device object.
@@ -73,8 +73,8 @@ Remarks:
     receives mouse input data packets that contain movement data.
 
 --*/
-typedef struct _MOUSE_CLASS_MOVEMENT_DEVICE
-{
+typedef struct _MOUSE_CLASS_MOVEMENT_DEVICE {
+
     //
     // The connect data information used by the MouHid driver to copy mouse
     //  input data packets to the mouse class movement device object.
@@ -123,15 +123,13 @@ Remarks:
     injecting input packets in(to) one or both of the class data queues.
 
 --*/
-typedef struct _MOUSE_DEVICE_STACK_CONTEXT
-{
+typedef struct _MOUSE_DEVICE_STACK_CONTEXT {
     MOUSE_CLASS_BUTTON_DEVICE ButtonDevice;
     MOUSE_CLASS_MOVEMENT_DEVICE MovementDevice;
-
 } MOUSE_DEVICE_STACK_CONTEXT, *PMOUSE_DEVICE_STACK_CONTEXT;
 
-typedef struct _DEVICE_RESOLUTION_CONTEXT
-{
+typedef struct _DEVICE_RESOLUTION_CONTEXT {
+
     KSPIN_LOCK Lock;
 
     //
@@ -165,13 +163,10 @@ typedef struct _DEVICE_RESOLUTION_CONTEXT
 
 } DEVICE_RESOLUTION_CONTEXT, *PDEVICE_RESOLUTION_CONTEXT;
 
-typedef struct _MOUCLASS_INPUT_INJECTION_MANAGER
-{
+typedef struct _MOUCLASS_INPUT_INJECTION_MANAGER {
     HANDLE MousePnpNotificationHandle;
-
     POINTER_ALIGNMENT ERESOURCE Resource;
     _Guarded_by_(Resource) PMOUSE_DEVICE_STACK_CONTEXT DeviceStackContext;
-
 } MOUCLASS_INPUT_INJECTION_MANAGER, *PMOUCLASS_INPUT_INJECTION_MANAGER;
 
 
@@ -609,10 +604,10 @@ Remarks:
         ButtonFlags,
         ButtonData);
 
-    if (!MivValidateButtonInput(ButtonFlags, ButtonData))
+    ntstatus = MivValidateButtonInput(ButtonFlags, ButtonData);
+    if (!NT_SUCCESS(ntstatus))
     {
-        ERR_PRINT("MivValidateButtonInput failed.");
-        ntstatus = STATUS_INVALID_PARAMETER;
+        ERR_PRINT("MivValidateMovementInput failed: 0x%X", ntstatus);
         goto exit;
     }
 
@@ -696,10 +691,10 @@ Remarks:
         MovementX,
         MovementY);
 
-    if (!MivValidateMovementInput(IndicatorFlags, MovementX, MovementY))
+    ntstatus = MivValidateMovementInput(IndicatorFlags, MovementX, MovementY);
+    if (!NT_SUCCESS(ntstatus))
     {
-        ERR_PRINT("MivValidateMovementInput failed.");
-        ntstatus = STATUS_INVALID_PARAMETER;
+        ERR_PRINT("MivValidateMovementInput failed: 0x%X", ntstatus);
         goto exit;
     }
 
@@ -1254,7 +1249,7 @@ exit:
     }
 
     KeReleaseSpinLockFromDpcLevel(&pDeviceResolutionContext->Lock);
-    
+
     if (fResolutionComplete)
     {
         EventState = KeSetEvent(
